@@ -37,6 +37,7 @@
                 <th>Guest Name</th>
                 <th>Total Bill (UGX)</th>
                 <th>Opened At</th>
+                <th>Actions<th>
             </tr>
         </thead>
         <tbody>
@@ -51,6 +52,10 @@
                             <td><strong><%= tab.getGuestName() %></strong></td>
                             <td class="bill-amount"><%= String.format("%,d", tab.getTotalBill()) %></td>
                             <td><%= tab.getCreatedAt() %></td>
+                            <td>
+                            <a href="update-bill.jsp?id=<%= tab.getId() %>&name=<%= java.net.URLEncoder.encode(tab.getGuestName(), "UTF-8") %>" 
+                               style="color: #ffcc00; text-decoration: none; font-weight: bold;">➕ Add to Bill</a>
+                        </td>
                         </tr>
             <%
                     }
