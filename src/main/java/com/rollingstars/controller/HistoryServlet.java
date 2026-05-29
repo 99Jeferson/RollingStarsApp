@@ -7,52 +7,41 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
-
 import com.rollingstars.model.BarTab;
 import com.rollingstars.util.DBConnection;
-
 import jakarta.servlet.ServletException;
 import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
-@WebServlet("/dashboard")
-public class DashboardServlet extends HttpServlet {
+@WebServlet("/history")
+public class HistoryServlet extends HttpServlet {
     private static final long serialVersionUID = 1L;
 
     protected void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
-        List<BarTab> tabList = new ArrayList<>();
-        
-        // FIX 1: Defined the accurate filtering SQL string up front with 'status' included
-        String sql = "SELECT id, guest_name, total_bill, created_at, status FROM bar_tabs WHERE status = 'ACTIVE' ORDER BY created_at DESC";
+        List<BarTab> settledList = new ArrayList<>();
+        String sql = "SELECT id, guest_name, total_bill, created_at, status FROM bar_tabs WHERE status = 'SETTLED' ORDER BY created_at DESC";
 
         try (Connection conn = DBConnection.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql);
              ResultSet rs = stmt.executeQuery()) {
 
-            // FIX 2: Correctly pull column data out of 'rs' for every row found
             while (rs.next()) {
                 BarTab tab = new BarTab(
                     rs.getInt("id"),
                     rs.getString("guest_name"),
                     rs.getInt("total_bill"),
                     rs.getTimestamp("created_at"),
-                    rs.getString("status") 
+                    rs.getString("status")
                 );
-                
-                // FIX 3: Append the newly populated tab directly into our tracking array list
-                tabList.add(tab);
+                settledList.add(tab);
             }
-
         } catch (SQLException e) {
             e.printStackTrace();
         }
 
-        // Attach our list of records to the request object so the JSP page can read it
-        request.setAttribute("activeTabs", tabList);
-
-        // Forward the control directly over to our front-end view
-        request.getRequestDispatcher("dashboard.jsp").forward(request, response);
+        request.setAttribute("settledTabs", settledList);
+        request.getRequestDispatcher("history.jsp").forward(request, response);
     }
 }
