@@ -1,6 +1,14 @@
 <%@ page language="java" contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"%>
+<%@ page import="com.rollingstars.model.User" %>
+<%
+    // Safely extract the active user object from the session container
+    User userProfile = (User) session.getAttribute("currentUser");
+    String staffName = (userProfile != null) ? userProfile.getUsername() : "Staff";
+    String staffRole = (userProfile != null) ? userProfile.getRole() : "";
+%>
+
 <style>
-    /* Global Navigation Styles */
+    /* Global Navigation Styles preserved from your layout */
     .navbar {
         background-color: #252538;
         padding: 15px 30px;
@@ -17,6 +25,10 @@
         font-weight: bold;
         text-decoration: none;
         letter-spacing: 1px;
+    }
+    .navbar-links {
+        display: flex;
+        align-items: center;
     }
     .navbar-links a {
         color: #fff;
@@ -38,12 +50,22 @@
     }
 </style>
 
-
 <div class="navbar">
     <a href="dashboard" class="navbar-brand">🌟 Rolling Stars Lounge</a>
+    
     <div class="navbar-links">
-        <a href="dashboard">Dashboard</a>
-        <a href="add-tab.jsp">+ Open New Tab</a>
-        <a href="history">📈 Sales History</a>
+        <span style="color: #bbb; margin-right: 15px; font-size: 14px;">
+            User: <strong><%= staffName %></strong> 
+            <% if(!staffRole.isEmpty()) { %> [<%= staffRole %>] <% } %>
+        </span>
+
+        **<a href="dashboard">Dashboard</a>**
+        **<a href="add-tab.jsp">+ Open New Tab</a>**
+        
+        <% if (userProfile != null && !"BARTENDER".equals(staffRole)) { %>
+            **<a href="history">📈 Sales History</a>**
+        <% } %>
+        
+        <a href="LogoutServlet" style="color: #ff5555; margin-left: 20px; font-weight: bold; text-decoration: none;">❌ Logout</a>
     </div>
 </div>
