@@ -7,65 +7,72 @@
     String staffRole = (userProfile != null) ? userProfile.getRole() : "";
 %>
 
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+
 <style>
-    /* Global Navigation Styles preserved from your layout */
-    .navbar {
-        background-color: #252538;
-        padding: 15px 30px;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        border-radius: 8px;
-        margin-bottom: 30px;
-        box-shadow: 0 4px 10px rgba(0,0,0,0.3);
-    }
-    .navbar-brand {
-        color: #ffcc00;
-        font-size: 22px;
-        font-weight: bold;
-        text-decoration: none;
-        letter-spacing: 1px;
-    }
-    .navbar-links {
-        display: flex;
-        align-items: center;
-    }
-    .navbar-links a {
+    body {
+        background-color: #1a1a24;
         color: #fff;
-        text-decoration: none;
-        margin-left: 20px;
-        font-weight: 500;
-        transition: 0.3s;
-        padding: 8px 16px;
-        border-radius: 4px;
     }
-    .navbar-links a:hover {
-        background-color: #2f2f48;
-        color: #ffcc00;
+    .navbar-custom {
+        background-color: #252538;
+        border-bottom: 2px solid #34344d;
     }
-    .navbar-links a.active-link {
-        background-color: #ffcc00;
-        color: #111;
-        font-weight: bold;
+    .nav-link {
+        transition: color 0.2s ease-in-out;
+    }
+    .nav-link:hover {
+        color: #ffcc00 !important;
     }
 </style>
 
-<div class="navbar">
-    <a href="dashboard" class="navbar-brand">🌟 Rolling Stars Lounge</a>
-    
-    <div class="navbar-links">
-        <span style="color: #bbb; margin-right: 15px; font-size: 14px;">
-            User: <strong><%= staffName %></strong> 
-            <% if(!staffRole.isEmpty()) { %> [<%= staffRole %>] <% } %>
-        </span>
+<nav class="navbar navbar-expand-lg navbar-dark navbar-custom mb-4 shadow-sm">
+    <div class="container">
+        
+        <a class="navbar-brand text-warning fw-bold fs-4" href="dashboard">
+            <i class="bi bi-star-fill me-2"></i>Rolling Stars
+        </a>
+        
+        <button class="navbar-toggler border-0 shadow-none" type="button" data-bs-toggle="collapse" data-bs-target="#loungeNavbar">
+            <span class="navbar-toggler-icon"></span>
+        </button>
 
-        **<a href="dashboard">Dashboard</a>**
-        **<a href="add-tab.jsp">+ Open New Tab</a>**
+        <div class="collapse navbar-collapse" id="loungeNavbar">
+            <ul class="navbar-nav me-auto mb-2 mb-lg-0 fw-medium">
+                <li class="nav-item">
+                    <a class="nav-link" href="history">Sales History</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link text-success fw-bold" href="add-tab.jsp">
+                        <i class="bi bi-plus-circle-fill me-1"></i> Open New Tab
+                    </a>
+                </li>
+                
+                <% if (userProfile != null && !"BARTENDER".equals(staffRole)) { %>
+                    <li class="nav-item">
+                        <a class="nav-link text-white-50" href="history">
+                            <i class="bi bi-graph-up-arrow me-1"></i> Sales History
+                        </a>
+                    </li>
+                <% } %>
+            </ul>
+
+            <div class="d-flex align-items-center gap-3">
+                <div class="text-end d-none d-sm-block">
+                    <div class="small text-white fw-semibold"><%= staffName %></div>
+                    <span class="badge bg-dark text-warning border border-secondary px-2 py-1 uppercase" style="font-size: 0.75rem; letter-spacing: 0.5px;">
+                        <%= staffRole %>
+                    </span>
+                </div>
+                
+                <a href="LogoutServlet" class="btn btn-outline-danger btn-sm fw-bold px-3 py-1.5 shadow-sm">
+                    Logout <i class="bi bi-box-arrow-right ms-1"></i>
+                </a>
+            </div>
+        </div>
         
-        <% if (userProfile != null && !"BARTENDER".equals(staffRole)) { %>
-            **<a href="history">📈 Sales History</a>**
-        <% } %>
-        
-        <a href="LogoutServlet" style="color: #ff5555; margin-left: 20px; font-weight: bold; text-decoration: none;">❌ Logout</a>
     </div>
-</div>
+</nav>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
