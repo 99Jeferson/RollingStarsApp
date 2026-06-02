@@ -32,24 +32,24 @@ public class CreateTabServlet extends HttpServlet {
 
             try {
                 conn = DBConnection.getConnection();
-                conn.setAutoCommit(false); // Protect integrity
+                conn.setAutoCommit(false);
 
                 // 1. Fetch Item Details
-                String itemSql = "SELECT unit_price, stock_qty FROM inventory WHERE id = ?";
+                String itemSql = "SELECT price, stock_count FROM inventory WHERE id = ?";
                 int initialBill = 0;
                 try (PreparedStatement itemStmt = conn.prepareStatement(itemSql)) {
                     itemStmt.setInt(1, itemId);
                     try (ResultSet rs = itemStmt.executeQuery()) {
-                        if (rs.next() && rs.getInt("stock_qty") >= quantity) {
-                            initialBill = rs.getInt("unit_price") * quantity;
+                        if (rs.next() && rs.getInt("stock_count") >= quantity) {
+                            initialBill = rs.getInt("price") * quantity;
                         } else {
                             throw new SQLException("Insufficient starting stock available!");
                         }
                     }
                 }
 
-                // 2. Insert new tab and catch its generated ID
-                String insertTabSql = "INSERT INTO bar_tabs (guest_name, total_bill, status) VALUES (?, ?, 'Open')";
+                // 2. Insert new tab using upper-case 'ACTIVE' status designation
+                String insertTabSql = "INSERT INTO bar_tabs (guest_name, total_bill, status) VALUES (?, ?, 'ACTIVE')";
                 try (PreparedStatement tabStmt = conn.prepareStatement(insertTabSql, Statement.RETURN_GENERATED_KEYS)) {
                     tabStmt.setString(1, guestName);
                     tabStmt.setInt(2, initialBill);
@@ -61,7 +61,7 @@ public class CreateTabServlet extends HttpServlet {
                 }
 
                 // 3. Deduct Core Inventory Stock
-                String deductSql = "UPDATE inventory SET stock_qty = stock_qty - ? WHERE id = ?";
+                String deductSql = "UPDATE inventory SET stock_count = stock_count - ? WHERE id = ?";
                 try (PreparedStatement deductStmt = conn.prepareStatement(deductSql)) {
                     deductStmt.setInt(1, quantity);
                     deductStmt.setInt(2, itemId);
@@ -76,7 +76,7 @@ public class CreateTabServlet extends HttpServlet {
                     logStmt.executeUpdate();
                 }
 
-                conn.commit(); // Push changes permanently
+                conn.commit();
             } catch (SQLException e) {
                 if (conn != null) { try { conn.rollback(); } catch (SQLException ex) { ex.printStackTrace(); } }
                 e.printStackTrace();
@@ -85,10 +85,10 @@ public class CreateTabServlet extends HttpServlet {
             }
 
             if (newTabId != -1) {
-                response.sendRedirect("view-tab?id=" + newTabId);
+                response.sendRedirect("dashboard?success=New guest session opened successfully!");
                 return;
             }
         }
-        response.sendRedirect("dashboard");
+        response.sendRedirect("dashboard?error=Failed to process registration parameters.");
     }
 }

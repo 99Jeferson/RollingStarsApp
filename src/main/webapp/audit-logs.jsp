@@ -1,75 +1,104 @@
 <%@ page language="java" contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"%>
-<%@ page import="com.rollingstars.model.InventoryLog" %>
-<%@ page import="java.util.List" %>
-<%
-    List<InventoryLog> auditTrail = (List<InventoryLog>) request.getAttribute("auditTrail");
-%>
+<%@ page import="java.util.List, java.util.Map" %>
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Rolling Stars - System Management Audit</title>
+    <title>Rolling Stars - Executive Audit Vault</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/font/bootstrap-icons.css">
+    <style>
+        body { background-color: #0d0d13; color: #e2e2e9; }
+        .card-custom { background-color: #161622; border: 1px solid #28283a; }
+        .table-custom th { background-color: #212133; color: #9a9ab0; }
+    </style>
 </head>
-<body style="background-color: #1a1a24; color: #ffffff;">
+<body>
 
-    <jsp:include page="header.jsp" />
+<div class="container my-5">
+    <div class="mb-4 border-bottom pb-3 border-secondary">
+        <h2 class="text-danger fw-bold"><i class="bi bi-shield-lock-fill me-2"></i>System Operations Audit Chamber</h2>
+        <p class="text-secondary small mb-0">Track system actions by setting date boundaries or filtering by specific employees.</p>
+    </div>
 
-    <div class="container my-5 text-start">
-        <div class="d-flex justify-content-between align-items-center mb-4">
-            <div>
-                <h2 class="fw-bold text-info m-0"><i class="bi bi-shield-check me-2"></i>Master Security Audit Ledger</h2>
-                <p class="text-secondary small m-0">Executive Level Oversight — Un-editable log history tracking stock adjustments.</p>
+    <div class="card card-custom p-4 mb-4">
+        <form action="boss-audit" method="GET" class="row g-3 align-items-end">
+            <div class="col-md-3">
+                <label class="form-label text-secondary small fw-bold">From Date</label>
+                <input type="date" name="startDate" class="form-control bg-dark text-white border-secondary" value="${startDate}">
             </div>
-            <a href="dashboard" class="btn btn-outline-info btn-sm">
-                <i class="bi bi-speedometer2 me-1"></i> Dashboard
-            </a>
-        </div>
+            <div class="col-md-3">
+                <label class="form-label text-secondary small fw-bold">To Date</label>
+                <input type="date" name="endDate" class="form-control bg-dark text-white border-secondary" value="${endDate}">
+            </div>
+            <div class="col-md-3">
+                <label class="form-label text-secondary small fw-bold">Responsible Staff Member</label>
+                <select name="worker" class="form-select bg-dark text-white border-secondary">
+                    <option value="">-- All Workers --</option>
+                    <% 
+                        List<String> workers = (List<String>) request.getAttribute("workers");
+                        String selectedWorker = (String) request.getAttribute("selectedWorker");
+                        if(workers != null) {
+                            for(String w : workers) {
+                                String selectedAttr = (w.equals(selectedWorker)) ? "selected" : "";
+                    %>
+                        <option value="<%= w %>" <%= selectedAttr %>><%= w %></option>
+                    <% 
+                            }
+                        }
+                    %>
+                </select>
+            </div>
+            <div class="col-md-3 d-grid">
+                <button type="submit" class="btn btn-danger fw-bold"><i class="bi bi-search me-1"></i> Scan Audit Logs</button>
+            </div>
+        </form>
+    </div>
 
-        <div class="card shadow rounded-3 border-0 text-white" style="background-color: #252538; border: 1px solid #34344d !important;">
-            <div class="table-responsive">
-                <table class="table table-dark table-hover align-middle mb-0" style="--bs-table-bg: transparent; --bs-table-hover-bg: #2d2d42;">
-                    <thead class="text-secondary small text-uppercase" style="border-bottom: 2px solid #34344d;">
+    <div class="card card-custom p-3">
+        <div class="table-responsive">
+            <table class="table table-dark table-hover mb-0">
+                <thead>
+                    <tr>
+                        <th>Log ID</th>
+                        <th>Execution Time</th>
+                        <th>Responsible Party</th>
+                        <th>Operation Type</th>
+                        <th>Affected Item</th>
+                        <th class="text-center">Qty Shift</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <% 
+                        List<Map<String, Object>> logs = (List<Map<String, Object>>) request.getAttribute("logs");
+                        if (logs == null || logs.isEmpty()) {
+                    %>
+                        <tr><td colspan="6" class="text-center text-secondary py-4">No security logs recorded for this selection.</td></tr>
+                    <% 
+                        } else {
+                            for(Map<String, Object> log : logs) {
+                    %>
                         <tr>
-                            <th class="ps-4 py-3">Log ID</th>
-                            <th class="py-3">Timestamp</th>
-                            <th class="py-3">Action Type</th>
-                            <th class="py-3">Item Name</th>
-                            <th class="py-3 text-center">Qty Balance Change</th>
-                            <th class="pe-4 py-3 text-end">Performed By</th>
+                            <td>#<%= log.get("id") %></td>
+                            <td class="text-secondary small"><%= log.get("time") %></td>
+                            <td class="text-info fw-semibold"><i class="bi bi-person-badge me-1"></i><%= log.get("by") %></td>
+                            <td>
+                                <span class="badge <%= "SALE_DEDUCTION".equals(log.get("type")) ? "bg-warning text-dark" : "bg-success" %>">
+                                    <%= log.get("type") %>
+                                </span>
+                            </td>
+                            <td class="text-white"><%= log.get("itemName") %></td>
+                            <td class="text-center fw-bold"><%= log.get("qty") %></td>
                         </tr>
-                    </thead>
-                    <tbody>
-                        <% if (auditTrail != null && !auditTrail.isEmpty()) { 
-                            for (InventoryLog log : auditTrail) { 
-                                boolean isRestock = "STOCK_IN".equals(log.getTransactionType());
-                                String typeBadgeClass = isRestock ? "bg-success bg-opacity-10 text-success border border-success border-opacity-25" : "bg-danger bg-opacity-10 text-danger border border-danger border-opacity-25";
-                                String typeText = isRestock ? "STOCK ARRIED" : "CUSTOMER SALE";
-                                String quantitySign = isRestock ? "+" : "-";
-                        %>
-                            <tr style="border-bottom: 1px solid #34344d;">
-                                <td class="ps-4 text-secondary small py-3">#LOG-<%= log.getId() %></td>
-                                <td class="text-white-50 small"><%= log.getLoggedAt() %></td>
-                                <td>
-                                    <span class="badge rounded-2 px-2.5 py-1.5 small <%= typeBadgeClass %>"><%= typeText %></span>
-                                </td>
-                                <td class="fw-medium text-white"><%= log.getItemName() %></td>
-                                <td class="text-center fw-bold <%= isRestock ? "text-success" : "text-danger" %>">
-                                    <%= quantitySign %><%= log.getQuantity() %>
-                                </td>
-                                <td class="pe-4 text-end text-white-50 fw-medium"><%= log.getPerformedBy() %></td>
-                            </tr>
-                        <%   } 
-                           } else { %>
-                            <tr>
-                                <td colspan="6" class="text-center py-5 text-secondary">No recorded history transactions verified in the system logs.</td>
-                            </tr>
-                        <% } %>
-                    </tbody>
-                </table>
-            </div>
+                    <% 
+                            }
+                        }
+                    %>
+                </tbody>
+            </table>
         </div>
     </div>
+</div>
 
 </body>
 </html>

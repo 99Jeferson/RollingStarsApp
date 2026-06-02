@@ -9,7 +9,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import com.rollingstars.model.BarTab;
-import com.rollingstars.model.InventoryItem; // Added to handle stock items
+import com.rollingstars.model.InventoryItem;
 import com.rollingstars.util.DBConnection;
 
 import jakarta.servlet.ServletException;
@@ -24,13 +24,11 @@ public class DashboardServlet extends HttpServlet {
 
     protected void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
         List<BarTab> tabList = new ArrayList<>();
-        List<InventoryItem> availableInventory = new ArrayList<>(); // Added to store menu stock
+        List<InventoryItem> availableInventory = new ArrayList<>();
         
-        // SQL Queries
         String tabSql = "SELECT id, guest_name, total_bill, created_at, status FROM bar_tabs WHERE status = 'ACTIVE' ORDER BY created_at DESC";
-        String invSql = "SELECT id, item_name, unit_price, stock_qty FROM inventory WHERE stock_qty > 0 ORDER BY item_name ASC";
+        String invSql = "SELECT id, item_name, price, stock_count FROM inventory WHERE stock_count > 0 ORDER BY item_name ASC";
 
-        // Open a single connection block to process both statements cleanly
         try (Connection conn = DBConnection.getConnection()) {
             
             // TASK 1: Fetch active tracking tables for the live floor view
@@ -49,7 +47,7 @@ public class DashboardServlet extends HttpServlet {
                 }
             }
 
-            // TASK 2: Fetch any active stock rooms entries with quantities > 0 for the dropdown menu
+            // TASK 2: Fetch active stock room entries for the quick action forms
             try (PreparedStatement invStmt = conn.prepareStatement(invSql);
                  ResultSet invRs = invStmt.executeQuery()) {
 
@@ -57,8 +55,8 @@ public class DashboardServlet extends HttpServlet {
                     InventoryItem item = new InventoryItem();
                     item.setId(invRs.getInt("id"));
                     item.setItemName(invRs.getString("item_name"));
-                    item.setUnitPrice(invRs.getInt("unit_price"));
-                    item.setStockQty(invRs.getInt("stock_qty"));
+                    item.setUnitPrice(invRs.getInt("price")); 
+                    item.setStockQty(invRs.getInt("stock_count"));
                     availableInventory.add(item);
                 }
             }
@@ -68,11 +66,9 @@ public class DashboardServlet extends HttpServlet {
             e.printStackTrace();
         }
         
-        // Attach both arrays to the request pipeline parameters
         request.setAttribute("activeTabs", tabList);
-        request.setAttribute("inventoryList", availableInventory); // Sent directly to the front-end dropdown form
+        request.setAttribute("inventoryList", availableInventory);
 
-        // Forward the control directly over to your front-end view
         request.getRequestDispatcher("dashboard.jsp").forward(request, response);
     }
 }

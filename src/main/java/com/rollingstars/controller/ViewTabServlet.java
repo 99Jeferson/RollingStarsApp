@@ -24,57 +24,62 @@ public class ViewTabServlet extends HttpServlet {
 
     protected void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
         String tabIdStr = request.getParameter("id");
-        BarTab tab = null;
-        List<InventoryItem> availableInventory = new ArrayList<>();
-
-        // 1. Fetch the active customer tab context
-        if (tabIdStr != null && !tabIdStr.trim().isEmpty()) {
-            int tabId = Integer.parseInt(tabIdStr);
-            String tabSql = "SELECT * FROM bar_tabs WHERE id = ?"; 
-
-            try (Connection conn = DBConnection.getConnection();
-                 PreparedStatement stmt = conn.prepareStatement(tabSql)) {
-                stmt.setInt(1, tabId);
-                try (ResultSet rs = stmt.executeQuery()) {
-                    if (rs.next()) {
-                        tab = new BarTab();
-                        tab.setId(rs.getInt("id"));
-                        tab.setGuestName(rs.getString("guest_name"));
-                        tab.setTotalBill(rs.getInt("total_bill"));
-                    }
-                }
-            } catch (SQLException e) {
-                System.out.println("Database Error fetching active tab!");
-                e.printStackTrace();
-            }
+        if (tabIdStr == null || tabIdStr.trim().isEmpty()) {
+            response.sendRedirect("dashboard?error=Missing Tab Identification ID Parameter.");
+            return;
         }
 
-        // 2. Fetch all items in stock for the bartender dropdown selector
-        String invSql = "SELECT * FROM inventory WHERE stock_qty > 0 ORDER BY item_name ASC";
-        try (Connection conn = DBConnection.getConnection();
-             PreparedStatement stmt = conn.prepareStatement(invSql);
-             ResultSet rs = stmt.executeQuery()) {
+        int tabId = Integer.parseInt(tabIdStr);
+        BarTab activeTab = null;
+        List<InventoryItem> availableInventory = new ArrayList<>();
+
+        String tabSql = "SELECT id, guest_name, total_bill, created_at, status FROM bar_tabs WHERE id = ?";
+        String invSql = "SELECT id, item_name, price, stock_count FROM inventory WHERE stock_count > 0 ORDER BY item_name ASC";
+
+        try (Connection conn = DBConnection.getConnection()) {
             
-            while (rs.next()) {
-                InventoryItem item = new InventoryItem();
-                item.setId(rs.getInt("id"));
-                item.setItemName(rs.getString("item_name"));
-                item.setUnitPrice(rs.getInt("unit_price"));
-                item.setStockQty(rs.getInt("stock_qty"));
-                availableInventory.add(item);
+            // 1. Fetch current customer session billing metrics
+            try (PreparedStatement tabStmt = conn.prepareStatement(tabSql)) {
+                tabStmt.setInt(1, tabId);
+                try (ResultSet rs = tabStmt.executeQuery()) {
+                    if (rs.next()) {
+                        activeTab = new BarTab(
+                            rs.getInt("id"),
+                            rs.getString("guest_name"),
+                            rs.getInt("total_bill"),
+                            rs.getTimestamp("created_at"),
+                            rs.getString("status")
+                        );
+                    }
+                }
             }
+
+            // 2. Fetch inventory records to build the dynamic select dropdown panel
+            try (PreparedStatement invStmt = conn.prepareStatement(invSql);
+                 ResultSet invRs = invStmt.executeQuery()) {
+
+                while (invRs.next()) {
+                    InventoryItem item = new InventoryItem();
+                    item.setId(invRs.getInt("id"));
+                    item.setItemName(invRs.getString("item_name"));
+                    item.setUnitPrice(invRs.getInt("price"));         // Mapped to updated 'price' column
+                    item.setStockQty(invRs.getInt("stock_count"));     // Mapped to updated 'stock_count' column
+                    availableInventory.add(item);
+                }
+            }
+
         } catch (SQLException e) {
             System.out.println("Database Error pulling live inventory list!");
             e.printStackTrace();
         }
 
-        // 3. Route or fallback based on search context safety
-        if (tab != null) {
-            request.setAttribute("tab", tab);
-            request.setAttribute("inventoryList", availableInventory); // Sent directly to UI drop-down
-            request.getRequestDispatcher("view-tab.jsp").forward(request, response);
-        } else {
-            response.sendRedirect("dashboard");
+        if (activeTab == null) {
+            response.sendRedirect("dashboard?error=Requested bar session tab data was not found.");
+            return;
         }
+
+        request.setAttribute("tab", activeTab);
+        request.setAttribute("inventoryList", availableInventory);
+        request.getRequestDispatcher("view-tab.jsp").forward(request, response);
     }
 }
