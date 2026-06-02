@@ -39,23 +39,35 @@
         </button>
 
         <div class="collapse navbar-collapse" id="loungeNavbar">
-            <ul class="navbar-nav me-auto mb-2 mb-lg-0 fw-medium">
+            <ul class="navbar-nav me-auto mb-2 mb-lg-0 fw-medium gap-1 align-items-lg-center">
+                
                 <li class="nav-item">
-                    <a class="nav-link" href="history">Sales History</a>
+                    <a class="nav-link text-white-50" href="dashboard">
+                        <i class="bi bi-speedometer2 me-1"></i> Live Floor Track
+                    </a>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link text-success fw-bold" href="add-tab.jsp">
-                        <i class="bi bi-plus-circle-fill me-1"></i> Open New Tab
+                    <a class="nav-link text-white-50" href="history">
+                        <i class="bi bi-clock-history me-1"></i> Sales History
                     </a>
                 </li>
                 
-                <% if (userProfile != null && !"BARTENDER".equals(staffRole)) { %>
+                <% if (userProfile != null && ("MANAGER".equals(staffRole) || "BOSS".equals(staffRole))) { %>
                     <li class="nav-item">
-                        <a class="nav-link text-white-50" href="history">
-                            <i class="bi bi-graph-up-arrow me-1"></i> Sales History
+                        <a class="nav-link text-warning fw-semibold" href="inventory-control">
+                            <i class="bi bi-boxes me-1"></i> Stock Management
                         </a>
                     </li>
                 <% } %>
+
+                <% if (userProfile != null && "BOSS".equals(staffRole)) { %>
+                    <li class="nav-item">
+                        <a class="nav-link text-info fw-semibold" href="audit-logs">
+                            <i class="bi bi-shield-lock-fill me-1"></i> Security Audit Trail
+                        </a>
+                    </li>
+                <% } %>
+                
             </ul>
 
             <div class="d-flex align-items-center gap-3">

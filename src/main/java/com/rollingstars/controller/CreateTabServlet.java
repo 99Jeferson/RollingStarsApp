@@ -1,0 +1,94 @@
+package com.rollingstars.controller;
+
+import java.io.IOException;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Statement;
+import com.rollingstars.util.DBConnection;
+
+import jakarta.servlet.ServletException;
+import jakarta.servlet.annotation.WebServlet;
+import jakarta.servlet.http.HttpServlet;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+
+@WebServlet("/CreateTabServlet")
+public class CreateTabServlet extends HttpServlet {
+    private static final long serialVersionUID = 1L;
+
+    protected void doPost(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
+        String guestName = request.getParameter("guestName");
+        String itemIdStr = request.getParameter("itemId");
+        String quantityStr = request.getParameter("quantity");
+
+        if (guestName != null && itemIdStr != null && quantityStr != null) {
+            int itemId = Integer.parseInt(itemIdStr);
+            int quantity = Integer.parseInt(quantityStr);
+            
+            Connection conn = null;
+            int newTabId = -1;
+
+            try {
+                conn = DBConnection.getConnection();
+                conn.setAutoCommit(false); // Protect integrity
+
+                // 1. Fetch Item Details
+                String itemSql = "SELECT unit_price, stock_qty FROM inventory WHERE id = ?";
+                int initialBill = 0;
+                try (PreparedStatement itemStmt = conn.prepareStatement(itemSql)) {
+                    itemStmt.setInt(1, itemId);
+                    try (ResultSet rs = itemStmt.executeQuery()) {
+                        if (rs.next() && rs.getInt("stock_qty") >= quantity) {
+                            initialBill = rs.getInt("unit_price") * quantity;
+                        } else {
+                            throw new SQLException("Insufficient starting stock available!");
+                        }
+                    }
+                }
+
+                // 2. Insert new tab and catch its generated ID
+                String insertTabSql = "INSERT INTO bar_tabs (guest_name, total_bill, status) VALUES (?, ?, 'Open')";
+                try (PreparedStatement tabStmt = conn.prepareStatement(insertTabSql, Statement.RETURN_GENERATED_KEYS)) {
+                    tabStmt.setString(1, guestName);
+                    tabStmt.setInt(2, initialBill);
+                    tabStmt.executeUpdate();
+                    
+                    try (ResultSet keys = tabStmt.getGeneratedKeys()) {
+                        if (keys.next()) { newTabId = keys.getInt(1); }
+                    }
+                }
+
+                // 3. Deduct Core Inventory Stock
+                String deductSql = "UPDATE inventory SET stock_qty = stock_qty - ? WHERE id = ?";
+                try (PreparedStatement deductStmt = conn.prepareStatement(deductSql)) {
+                    deductStmt.setInt(1, quantity);
+                    deductStmt.setInt(2, itemId);
+                    deductStmt.executeUpdate();
+                }
+
+                // 4. Log the initial deduction action
+                String logSql = "INSERT INTO inventory_logs (item_id, quantity, transaction_type, performed_by) VALUES (?, ?, 'SALE_DEDUCTION', 'Floor_Bartender')";
+                try (PreparedStatement logStmt = conn.prepareStatement(logSql)) {
+                    logStmt.setInt(1, itemId);
+                    logStmt.setInt(2, quantity);
+                    logStmt.executeUpdate();
+                }
+
+                conn.commit(); // Push changes permanently
+            } catch (SQLException e) {
+                if (conn != null) { try { conn.rollback(); } catch (SQLException ex) { ex.printStackTrace(); } }
+                e.printStackTrace();
+            } finally {
+                try { if (conn != null) conn.close(); } catch (SQLException e) { e.printStackTrace(); }
+            }
+
+            if (newTabId != -1) {
+                response.sendRedirect("view-tab?id=" + newTabId);
+                return;
+            }
+        }
+        response.sendRedirect("dashboard");
+    }
+}

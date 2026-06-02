@@ -5,8 +5,11 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.ArrayList;
+import java.util.List;
 
 import com.rollingstars.model.BarTab;
+import com.rollingstars.model.InventoryItem;
 import com.rollingstars.util.DBConnection;
 
 import jakarta.servlet.ServletException;
@@ -15,30 +18,25 @@ import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
-// This exact mapping is what fixes your 404 error!
 @WebServlet("/view-tab")
 public class ViewTabServlet extends HttpServlet {
     private static final long serialVersionUID = 1L;
 
     protected void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
-        // 1. Grab the ID from the URL (e.g., view-tab?id=5)
         String tabIdStr = request.getParameter("id");
         BarTab tab = null;
+        List<InventoryItem> availableInventory = new ArrayList<>();
 
+        // 1. Fetch the active customer tab context
         if (tabIdStr != null && !tabIdStr.trim().isEmpty()) {
             int tabId = Integer.parseInt(tabIdStr);
-            
-            // 2. Fetch this specific guest's active bill from MySQL
-            String sql = "SELECT * FROM bar_tabs WHERE id = ?"; 
+            String tabSql = "SELECT * FROM bar_tabs WHERE id = ?"; 
 
             try (Connection conn = DBConnection.getConnection();
-                 PreparedStatement stmt = conn.prepareStatement(sql)) {
-
+                 PreparedStatement stmt = conn.prepareStatement(tabSql)) {
                 stmt.setInt(1, tabId);
-                
                 try (ResultSet rs = stmt.executeQuery()) {
                     if (rs.next()) {
-                        // 3. Populate your Java model object
                         tab = new BarTab();
                         tab.setId(rs.getInt("id"));
                         tab.setGuestName(rs.getString("guest_name"));
@@ -46,18 +44,36 @@ public class ViewTabServlet extends HttpServlet {
                     }
                 }
             } catch (SQLException e) {
-                System.out.println("Database Error fetching single tab!");
+                System.out.println("Database Error fetching active tab!");
                 e.printStackTrace();
             }
         }
 
-        // 4. Route the user based on whether the data was found
+        // 2. Fetch all items in stock for the bartender dropdown selector
+        String invSql = "SELECT * FROM inventory WHERE stock_qty > 0 ORDER BY item_name ASC";
+        try (Connection conn = DBConnection.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(invSql);
+             ResultSet rs = stmt.executeQuery()) {
+            
+            while (rs.next()) {
+                InventoryItem item = new InventoryItem();
+                item.setId(rs.getInt("id"));
+                item.setItemName(rs.getString("item_name"));
+                item.setUnitPrice(rs.getInt("unit_price"));
+                item.setStockQty(rs.getInt("stock_qty"));
+                availableInventory.add(item);
+            }
+        } catch (SQLException e) {
+            System.out.println("Database Error pulling live inventory list!");
+            e.printStackTrace();
+        }
+
+        // 3. Route or fallback based on search context safety
         if (tab != null) {
-            // Success: Hand the data to the view-tab.jsp page to display
             request.setAttribute("tab", tab);
+            request.setAttribute("inventoryList", availableInventory); // Sent directly to UI drop-down
             request.getRequestDispatcher("view-tab.jsp").forward(request, response);
         } else {
-            // Failure: If the ID was missing or invalid, bounce them back to the dashboard
             response.sendRedirect("dashboard");
         }
     }

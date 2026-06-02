@@ -1,8 +1,13 @@
 <%@ page language="java" contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"%>
 <%@ page import="com.rollingstars.model.BarTab" %>
+<%@ page import="com.rollingstars.model.InventoryItem" %>
+<%@ page import="java.util.List" %>
 <%
-    // Fetch the active single tab record sent from your ViewTabServlet
+    // 1. Safely extract core attributes passed down from ViewTabServlet
     BarTab tab = (BarTab) request.getAttribute("tab");
+    List<InventoryItem> inventoryList = (List<InventoryItem>) request.getAttribute("inventoryList");
+    
+    // Redirect guard to prevent null errors if accessed directly without controller routing
     if (tab == null) {
         response.sendRedirect("dashboard");
         return;
@@ -52,15 +57,26 @@
                                 <form action="UpdateBillServlet" method="POST">
                                     <input type="hidden" name="tabId" value="<%= tab.getId() %>">
                                     
+                                    <div class="mb-3">
+                                        <label class="form-label text-secondary small fw-medium">Select Lounge Item</label>
+                                        <select name="itemId" class="form-select bg-dark border-secondary text-white shadow-none" required>
+                                            <option value="" disabled selected>-- Choose Drink / Food --</option>
+                                            <% if (inventoryList != null) { 
+                                                for (InventoryItem item : inventoryList) { %>
+                                                    <option value="<%= item.getId() %>">
+                                                        <%= item.getItemName() %> — UGX <%= String.format("%,d", item.getUnitPrice()) %> (In Stock: <%= item.getStockQty() %>)
+                                                    </option>
+                                            <%   } 
+                                               } %>
+                                        </select>
+                                    </div>
+
                                     <div class="mb-4">
-                                        <label class="form-label text-secondary small fw-medium">Additional Charge Amount (UGX)</label>
-                                        <div class="input-group">
-                                            <span class="input-group-text bg-dark border-secondary text-success fw-bold">UGX</span>
-                                            <input type="number" name="additionalAmount" class="form-control bg-dark border-secondary text-white shadow-none" 
-                                                   placeholder="e.g., 25000" min="1" required>
-                                        </div>
+                                        <label class="form-label text-secondary small fw-medium">Quantity Ordered</label>
+                                        <input type="number" name="quantity" class="form-control bg-dark border-secondary text-white shadow-none" 
+                                               placeholder="e.g., 2" min="1" value="1" required>
                                         <div class="form-text text-white-50 mt-1" style="font-size: 0.75rem;">
-                                            Enter the cost of the new drinks or items served to add them to the total bill.
+                                            The system will auto-calculate total cost and deduct items directly from the stock counter.
                                          </div>
                                     </div>
 

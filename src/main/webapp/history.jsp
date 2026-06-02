@@ -1,6 +1,17 @@
 <%@ page language="java" contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"%>
 <%@ page import="java.util.List" %>
 <%@ page import="com.rollingstars.model.BarTab" %> 
+<%
+    // Fetch analytics variables from the HistoryServlet
+    Integer totalRevenue = (Integer) request.getAttribute("totalRevenue");
+    Integer avgSpend = (Integer) request.getAttribute("avgSpend");
+    Integer totalTabs = (Integer) request.getAttribute("totalTabs");
+
+    // Default to zero if the attributes come back empty
+    if(totalRevenue == null) totalRevenue = 0;
+    if(avgSpend == null) avgSpend = 0;
+    if(totalTabs == null) totalTabs = 0;
+%>
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -28,6 +39,49 @@
 
         <div class="card border-0 bg-dark shadow rounded-3 text-white overflow-hidden" style="background-color: #252538 !important; border: 1px solid #34344d !important;">
             <div class="table-responsive">
+      <div class="row g-3 mb-4 text-white">
+    <div class="col-12 col-md-4">
+        <div class="p-4 rounded-3 shadow-sm h-100" style="background-color: #252538; border: 1px solid #34344d;">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <span class="small text-secondary text-uppercase fw-bold tracking-wider">Total Revenue Logged</span>
+                    <h3 class="fw-bold text-success mt-2 mb-0">UGX <%= String.format("%,d", totalRevenue) %></h3>
+                </div>
+                <div class="bg-success bg-opacity-10 p-3 rounded-3 text-success">
+                    <i class="bi bi-cash-coin fs-4"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-12 col-md-4">
+        <div class="p-4 rounded-3 shadow-sm h-100" style="background-color: #252538; border: 1px solid #34344d;">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <span class="small text-secondary text-uppercase fw-bold tracking-wider">Average Tab Value</span>
+                    <h3 class="fw-bold text-warning mt-2 mb-0">UGX <%= String.format("%,d", avgSpend) %></h3>
+                </div>
+                <div class="bg-warning bg-opacity-10 p-3 rounded-3 text-warning">
+                    <i class="bi bi-graph-up-arrow fs-4"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-12 col-md-4">
+        <div class="p-4 rounded-3 shadow-sm h-100" style="background-color: #252538; border: 1px solid #34344d;">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <span class="small text-secondary text-uppercase fw-bold tracking-wider">Closed Accounts</span>
+                    <h3 class="fw-bold text-info mt-2 mb-0"><%= totalTabs %> Tabs</h3>
+                </div>
+                <div class="bg-info bg-opacity-10 p-3 rounded-3 text-info">
+                    <i class="bi bi-people fs-4"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
                 <table class="table table-dark table-hover table-striped align-middle mb-0 text-start" style="--bs-table-bg: #252538;">
                     <thead class="table-light text-uppercase text-secondary fw-bold" style="font-size: 0.8rem; letter-spacing: 0.5px;">
                         <tr>

@@ -17,7 +17,6 @@ import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
-// This mapping catches the request for the history page
 @WebServlet("/history")
 public class HistoryServlet extends HttpServlet {
     private static final long serialVersionUID = 1L;
@@ -25,30 +24,53 @@ public class HistoryServlet extends HttpServlet {
     protected void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
         List<BarTab> closedTabs = new ArrayList<>();
         
-        // Fetch only closed tabs, ordering by most recently closed first (assuming higher ID = more recent)
-        String sql = "SELECT * FROM bar_tabs WHERE status = 'Closed' ORDER BY id DESC";
+        int totalRevenue = 0;
+        int avgSpend = 0;
+        int totalTabsCount = 0;
 
-        try (Connection conn = DBConnection.getConnection();
-             PreparedStatement stmt = conn.prepareStatement(sql);
-             ResultSet rs = stmt.executeQuery()) {
+        // Query 1: Fetch the individual historical closed records
+        String listSql = "SELECT * FROM bar_tabs WHERE status = 'Closed' ORDER BY id DESC";
+        
+        // Query 2: Calculate live financial metrics from all closed accounts
+        String metricsSql = "SELECT SUM(total_bill) AS total_rev, AVG(total_bill) AS avg_spend, COUNT(id) AS tab_count FROM bar_tabs WHERE status = 'Closed'";
 
-            while (rs.next()) {
-                BarTab tab = new BarTab();
-                tab.setId(rs.getInt("id"));
-                tab.setGuestName(rs.getString("guest_name"));
-                tab.setTotalBill(rs.getInt("total_bill"));
-                tab.setCreatedAt(rs.getTimestamp("created_at"));
-                tab.setStatus(rs.getString("status"));
-                
-                closedTabs.add(tab);
+        try (Connection conn = DBConnection.getConnection()) {
+            
+            // 1. Execute metrics aggregation
+            try (PreparedStatement metricsStmt = conn.prepareStatement(metricsSql);
+                 ResultSet rsMetrics = metricsStmt.executeQuery()) {
+                if (rsMetrics.next()) {
+                    totalRevenue = rsMetrics.getInt("total_rev");
+                    avgSpend = rsMetrics.getInt("avg_spend");
+                    totalTabsCount = rsMetrics.getInt("tab_count");
+                }
             }
+
+            // 2. Execute table row listing
+            try (PreparedStatement listStmt = conn.prepareStatement(listSql);
+                 ResultSet rsList = listStmt.executeQuery()) {
+                while (rsList.next()) {
+                    BarTab tab = new BarTab();
+                    tab.setId(rsList.getInt("id"));
+                    tab.setGuestName(rsList.getString("guest_name"));
+                    tab.setTotalBill(rsList.getInt("total_bill"));
+                    tab.setCreatedAt(rsList.getTimestamp("created_at"));
+                    tab.setStatus(rsList.getString("status"));
+                    closedTabs.add(tab);
+                }
+            }
+
         } catch (SQLException e) {
-            System.out.println("Database Error fetching history!");
+            System.out.println("Database Error processing financial analytics workflow!");
             e.printStackTrace();
         }
 
-        // Hand the data to the JSP page using the exact key "closedTabs"
+        // Send both the raw history data list AND the summary metrics data to the front end JSP
         request.setAttribute("closedTabs", closedTabs);
+        request.setAttribute("totalRevenue", totalRevenue);
+        request.setAttribute("avgSpend", avgSpend);
+        request.setAttribute("totalTabs", totalTabsCount);
+
         request.getRequestDispatcher("history.jsp").forward(request, response);
     }
 }
