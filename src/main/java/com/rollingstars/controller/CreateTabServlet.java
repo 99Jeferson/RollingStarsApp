@@ -6,6 +6,7 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import com.rollingstars.model.User;
 import com.rollingstars.util.DBConnection;
 
 import jakarta.servlet.ServletException;
@@ -13,12 +14,23 @@ import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.HttpSession;
 
 @WebServlet("/CreateTabServlet")
 public class CreateTabServlet extends HttpServlet {
     private static final long serialVersionUID = 1L;
 
     protected void doPost(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
+        // DYNAMIC RESOLUTION: Pull profile details down safely
+        String activeUser = "System_Staff";
+        HttpSession session = request.getSession(false);
+        if (session != null) {
+            User currentUser = (User) session.getAttribute("currentUser");
+            if (currentUser != null) {
+                activeUser = currentUser.getUsername();
+            }
+        }
+
         String guestName = request.getParameter("guestName");
         String itemIdStr = request.getParameter("itemId");
         String quantityStr = request.getParameter("quantity");
@@ -34,7 +46,6 @@ public class CreateTabServlet extends HttpServlet {
                 conn = DBConnection.getConnection();
                 conn.setAutoCommit(false);
 
-                // 1. Fetch Item Details
                 String itemSql = "SELECT price, stock_count FROM inventory WHERE id = ?";
                 int initialBill = 0;
                 try (PreparedStatement itemStmt = conn.prepareStatement(itemSql)) {
@@ -48,7 +59,6 @@ public class CreateTabServlet extends HttpServlet {
                     }
                 }
 
-                // 2. Insert new tab using upper-case 'ACTIVE' status designation
                 String insertTabSql = "INSERT INTO bar_tabs (guest_name, total_bill, status) VALUES (?, ?, 'ACTIVE')";
                 try (PreparedStatement tabStmt = conn.prepareStatement(insertTabSql, Statement.RETURN_GENERATED_KEYS)) {
                     tabStmt.setString(1, guestName);
@@ -60,7 +70,6 @@ public class CreateTabServlet extends HttpServlet {
                     }
                 }
 
-                // 3. Deduct Core Inventory Stock
                 String deductSql = "UPDATE inventory SET stock_count = stock_count - ? WHERE id = ?";
                 try (PreparedStatement deductStmt = conn.prepareStatement(deductSql)) {
                     deductStmt.setInt(1, quantity);
@@ -68,11 +77,12 @@ public class CreateTabServlet extends HttpServlet {
                     deductStmt.executeUpdate();
                 }
 
-                // 4. Log the initial deduction action
-                String logSql = "INSERT INTO inventory_logs (item_id, quantity, transaction_type, performed_by) VALUES (?, ?, 'SALE_DEDUCTION', 'Floor_Bartender')";
+                // FIXED: Dynamically passes the logged-in staff member into the audit line
+                String logSql = "INSERT INTO inventory_logs (item_id, quantity, transaction_type, performed_by) VALUES (?, ?, 'SALE_DEDUCTION', ?)";
                 try (PreparedStatement logStmt = conn.prepareStatement(logSql)) {
                     logStmt.setInt(1, itemId);
                     logStmt.setInt(2, quantity);
+                    logStmt.setString(3, activeUser);
                     logStmt.executeUpdate();
                 }
 

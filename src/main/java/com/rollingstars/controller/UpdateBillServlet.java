@@ -5,6 +5,7 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import com.rollingstars.model.User;
 import com.rollingstars.util.DBConnection;
 
 import jakarta.servlet.ServletException;
@@ -12,12 +13,23 @@ import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.HttpSession;
 
 @WebServlet("/UpdateBillServlet")
 public class UpdateBillServlet extends HttpServlet {
     private static final long serialVersionUID = 1L;
 
     protected void doPost(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
+        // DYNAMIC RESOLUTION: Read the User object matching LoginServlet setup
+        String activeUser = "System_Staff";
+        HttpSession session = request.getSession(false);
+        if (session != null) {
+            User currentUser = (User) session.getAttribute("currentUser");
+            if (currentUser != null) {
+                activeUser = currentUser.getUsername(); // Extracts name safely from your model
+            }
+        }
+
         String tabIdStr = request.getParameter("tabId");
         String itemIdStr = request.getParameter("itemId");
         String quantityStr = request.getParameter("quantity");
@@ -33,7 +45,6 @@ public class UpdateBillServlet extends HttpServlet {
                 conn = DBConnection.getConnection();
                 conn.setAutoCommit(false);
 
-                // 1. Fetch Item details using price and stock_count
                 String itemSql = "SELECT price, stock_count FROM inventory WHERE id = ?";
                 int itemPrice = 0;
                 int currentStock = 0;
@@ -50,12 +61,10 @@ public class UpdateBillServlet extends HttpServlet {
                     }
                 }
 
-                // 2. Stock Verification Check
                 if (currentStock < quantity) {
                     throw new SQLException("Insufficient stock! Only " + currentStock + " units left.");
                 }
 
-                // 3. Update the total tab bill
                 int addedCost = itemPrice * quantity;
                 String updateTabSql = "UPDATE bar_tabs SET total_bill = total_bill + ? WHERE id = ? AND status = 'ACTIVE'";
                 try (PreparedStatement tabStmt = conn.prepareStatement(updateTabSql)) {
@@ -67,7 +76,6 @@ public class UpdateBillServlet extends HttpServlet {
                     }
                 }
 
-                // 4. Deduct items using stock_count
                 String deductSql = "UPDATE inventory SET stock_count = stock_count - ? WHERE id = ?";
                 try (PreparedStatement deductStmt = conn.prepareStatement(deductSql)) {
                     deductStmt.setInt(1, quantity);
@@ -75,11 +83,12 @@ public class UpdateBillServlet extends HttpServlet {
                     deductStmt.executeUpdate();
                 }
 
-                // 5. Audit trail logging
-                String logSql = "INSERT INTO inventory_logs (item_id, quantity, transaction_type, performed_by) VALUES (?, ?, 'SALE_DEDUCTION', 'Floor_Bartender')";
+                // Logs action attributed directly to the logged-in staff member
+                String logSql = "INSERT INTO inventory_logs (item_id, quantity, transaction_type, performed_by) VALUES (?, ?, 'SALE_DEDUCTION', ?)";
                 try (PreparedStatement logStmt = conn.prepareStatement(logSql)) {
                     logStmt.setInt(1, itemId);
                     logStmt.setInt(2, quantity);
+                    logStmt.setString(3, activeUser); 
                     logStmt.executeUpdate();
                 }
 
@@ -88,9 +97,7 @@ public class UpdateBillServlet extends HttpServlet {
                 return;
 
             } catch (SQLException e) {
-                if (conn != null) { 
-                    try { conn.rollback(); } catch (SQLException ex) { ex.printStackTrace(); } 
-                }
+                if (conn != null) { try { conn.rollback(); } catch (SQLException ex) { ex.printStackTrace(); } }
                 e.printStackTrace();
                 response.sendRedirect("dashboard?error=Error adding to bill: " + e.getMessage());
                 return;

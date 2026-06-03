@@ -36,12 +36,12 @@ public class AuditLogServlet extends HttpServlet {
         String workerFilterSql = "SELECT DISTINCT performed_by FROM inventory_logs WHERE performed_by IS NOT NULL ORDER BY performed_by ASC";
         
         // 2. Base SQL layout definition for the log report
+     // CHANGE THIS BLOCK INSIDE AuditLogServlet.java:
         StringBuilder sql = new StringBuilder(
             "SELECT l.id, i.item_name, l.quantity, l.transaction_type, l.performed_by, l.created_at " +
             "FROM inventory_logs l " +
-            "JOIN inventory i ON l.item_id = i.id WHERE 1=1"
+            "LEFT JOIN inventory i ON l.item_id = i.id WHERE 1=1" // Changed to LEFT JOIN
         );
-
         // Evaluation state triggers
         boolean hasDates = (startDate != null && !startDate.trim().isEmpty()) && (endDate != null && !endDate.trim().isEmpty());
         boolean hasWorker = (worker != null && !worker.trim().isEmpty());
